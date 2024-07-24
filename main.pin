@@ -1,0 +1,169 @@
+// This source code is subject to the terms of the Mozilla Public License 2.0 at https://mozilla.org/MPL/2.0/
+
+
+//@version=5
+indicator("final project flag pattern mahrad mozafari",overlay =true)
+
+//*******************************************************************************
+//*******************************************************************************
+
+//inputs :=>
+
+period      = input.int(45, "period check of last candles" , 1)
+k1          = input(1.5,"Coefficient (#0=>#1).len > k1 * (#1=>#2).len")             //Coefficient 
+k2          = input(0.25 , "Coefficient (#1=>#2)-(#3=>4).len < k2 * (#1=>#2).len")  //Coefficient 
+
+//*******************************************************************************
+//*******************************************************************************
+
+//first varables :=>
+
+countup     = 0                                 // for numbers of max pivots
+countdown   = 0                                 // for numbers of min pivots
+temp        = close * 0                         // it is not important . just for test proggram
+maxs        = array.new_float(0)                // for save value of main maxs
+maxsindex   = array.new_int(0)                  // for save index of main maxs
+mins        = array.new_float(0)                // for save value of main mins 
+minsindex   = array.new_int(0)                  // for save index of main mins
+minmax      = array.new_int(1, 0)               // for check last last main pivots 
+
+//*******************************************************************************
+//*******************************************************************************
+
+//fuctions :=>
+//*******************************************************************************
+
+
+
+//*******************************************************************************
+//==                             start CheckPattern                          ==//
+
+CheckPattern(temp1, temp2 , leg , target , dir , tempindex) =>
+    // label.new(x = bar_index , y = high + 8, textcolor=color.white, color=color.blue ,text= str.tostring (array.size(temp2)))
+    if (array.size(temp1)) == 3 and (array.size(temp2))  == 4  
+        // label.new(x = bar_index , y = high + 8, textcolor=color.white, color=color.blue ,text= str.tostring (array.size(temp2)))
+        // label.new(x = last_bar_index , y = high + 8, textcolor=color.white, color=color.blue ,text= str.tostring (array.size(temp2)))
+        //==         (lenght of #0 => #1 movement) => #leg0            ==//
+        array.push(leg , math.abs(array.get(temp1 ,  0) - array.get(temp2 ,  0)))     
+        //==         (lenght of #1 => #2 movement) => #leg1            ==//
+        array.push(leg , math.abs(array.get(temp1 ,  0) - array.get(temp2 ,  1))) 
+                    
+        //*******************************************************************************
+        //==         first Step      ==//       
+        if array.get(leg , 0) >= (1 / k1) * array.get(leg , 1)    
+            // label.new(x = bar_index , y = high + 8, textcolor=color.white, color=color.blue ,text= str.tostring (array.size(temp1)))
+        // (#0 => #1).len must be 3/2*(#1 => #2).len
+        //******************************************************************************* 
+            //==        (lenght of #3 => #4 movement) => #leg2       ==//
+            array.push(leg , math.abs(array.get(temp1 , 1) - array.get(temp2 ,  2)))               
+            //*******************************************************************************
+            //==        (#1=>#2) - (#3=>#4) =< (#1=>#2) * k2       ==//
+            if math.abs(array.get(leg , 1) - array.get(leg , 2)) <= (k2) * array.get(leg , 1)
+                // label.new(x = bar_index , y = high + 8, textcolor=color.white, color=color.blue ,text= str.tostring (array.size(temp1)))
+                //*******************************************************************************
+                //==        (lenght of #5 => #6 movement) => #leg3       ==//
+                array.push(leg , math.abs(array.get(temp1 , 2) - array.get(temp2 ,  3)))
+                if math.abs(array.get(leg , 1) - array.get(leg , 3)) <= (k2) * array.get(leg , 1) 
+                    // label.new(x = bar_index , y = high + 8, textcolor=color.white, color= (dir==1 ? color.blue: color.red ),text= str.tostring (array.size(temp2)))
+                //*******************************************************************************
+                //==                set tar get                          ==//
+                    array.push(target , array.get(temp2 , 3) + (-1* dir) * math.abs(array.get(temp2 , 0) - array.get(temp1 , 0)))
+                    label.new(bar_index[array.get(tempindex , 2)], y=math.abs(array.get(target,array.size(target)-1)),textcolor=color.white, color= (dir == 1 ? color.maroon : color.green) ,style= (dir == 1 ? label.style_label_upper_right : label.style_label_lower_left),text = "taget : " + str.tostring(array.get(target,array.size(target)-1)))
+                    // line.new(x1=bar_index[array.get(tempindex , 2)], y1=high[array.get(tempindex , 2)], x2=bar_index[array.get(tempindex , 2)-5],  y2 = math.abs(array.get(target,array.size(target)-1)), xloc=xloc.bar_time, style=line.style_arrow_right)
+                    line.new(bar_index[array.get(tempindex , 2)],dir==1? high[array.get(tempindex , 2)]: low[array.get(tempindex , 2)], bar_index[array.get(tempindex , 2)-10], array.get(target,array.size(target)-1), extend=extend.none,width=3,style=line.style_arrow_right,color=(dir == 1 ?color.rgb( 1226 , 121 , 135 ,50): color.rgb( 38 , 168 , 150 ,50)))
+                    
+                    // label.new(bar_index[array.get(tempindex , 2)] , y = dir == 1 ? high[array.get(tempindex , 2)] +10 : low[array.get(tempindex , 2)] -10 ,color = dir == 1 ? color.maroon : color.green , style = label.style_circle)
+        //             // + array.get(tempindex ,j + 3)        
+                array.pop(leg)
+            array.pop(leg)
+        array.pop(leg)
+        array.pop(leg)
+            
+            
+                        //*******************************************************************************             
+            //******************************************************************************* 
+        //*******************************************************************************    
+//*******************************************************************************         
+
+
+
+
+//==                             start FindPivots                            ==//
+
+leg     = array.new_float(0)    // **==== Necessary proportions of differences pivots =====** //
+target  = array.new_float(0)    // **====                set target                   =====** //
+
+
+FindPivots(whatExterm , whatIndexExterm , whatHighLow , i , d) =>
+    //*******************************************************************************
+    //==                              Is exist ?       yes                   ==//
+    
+    if array.get(minmax, array.size(minmax) - 1) == d    
+    
+        // for check last minmax is 1 or not?
+        
+        array.pop(whatIndexExterm)
+        array.push(whatExterm, (array.get(whatExterm, array.size(whatExterm) - 1) > whatHighLow * d ? array.pop(whatExterm) : whatHighLow))
+        array.push(whatIndexExterm, period - i)
+        if (d == 1 ? array.size(mins) : array.size(maxs)) == 3 and (d == 1 ? array.size(maxs) : array.size(mins))  == 4
+            CheckPattern((d == 1 ? maxs : mins), (d == 1 ? mins : maxs) , leg , target , d , (d == 1 ? minsindex : maxsindex))
+            // label.new(x = bar_index , y = high + 8, textcolor=color.white, color=color.blue ,text= str.tostring (array.size(maxs)))
+        8
+    //*******************************************************************************
+    //==                              Is exist ?       no                    ==//
+    else                  
+        //for check last minmax is 1/-1 or not?
+        array.push(whatExterm, whatHighLow)
+        array.push(whatIndexExterm, period - i)
+        array.push(minmax, d)
+        if (d == 1 ? array.size(mins) : array.size(maxs)) == 3 and (d == 1 ? array.size(maxs) : array.size(mins))  == 4
+            // label.new(x = bar_index[1] , y = high + 8, textcolor=color.white, color=color.blue ,text= str.tostring (array.size(maxs)))
+            
+            CheckPattern((d == -1 ? maxs : mins), (d == -1 ? mins : maxs) , leg , target , d , (d == -1 ? minsindex : maxsindex))
+            array.reverse((d == 1 ? mins : maxs))
+            array.pop((d == 1 ? mins : maxs))
+            array.reverse((d == 1 ? mins : maxs))
+        8
+    // label.new(x = last_bar_index , y = high + 8, textcolor=color.white, color=color.blue ,text= str.tostring (array.size(whatExterm)))  
+    //*******************************************************************************            
+
+
+//==                               end FindPivots                            ==//
+//*******************************************************************************
+
+    
+    
+            
+//==                               end CheckPattern                           ==//
+//*******************************************************************************
+
+//*******************************************************************************
+//*******************************************************************************
+
+
+
+//88888888888888888888888888888888888888888888888888888        <<<<   MAIN   >>>>        888888888888888888888888888888888888888888888888888
+
+//*******************************************************************************
+//==                            start for #1                                 ==//
+if bar_index >= period 
+    // is candles enuf?
+    for i = 0 to period 
+    //==        routing from period lengh candles till curent candle        ==//
+
+        //*******************************************************************************
+        //==                          find high pivots                                 ==//   
+        if (high[period - i] <= high [period - i + 1]) and (high[period -i + 1] >= high[period - i + 2]) 
+            countup:= countup + 1
+            FindPivots(maxs , maxsindex  , high[period - i + 1] , i , 1)
+            // label.new(x = last_bar_index , y = high + 8, textcolor=color.white, color=color.blue ,text= str.tostring (array.size(maxs)))
+            
+        //*******************************************************************************    
+        //==                          find low  pivots                                 ==//   
+        if (low[period - i] >= low [period - i + 1]) and (low[period - i + 1] <= low[period - i + 2])  
+            countdown:= countdown + 1 
+            FindPivots(mins , minsindex , low[period - i + 1] , i , -1)
+        //*******************************************************************************    
+
+//==                            end for #1                                   ==//
+//*******************************************************************************
